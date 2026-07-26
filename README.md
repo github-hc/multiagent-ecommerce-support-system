@@ -16,7 +16,7 @@ knowledge base search).
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.9+
 - Docker (for Postgres)
 - [Ollama](https://ollama.com) installed and running locally
 
@@ -53,7 +53,7 @@ cp .env.example .env
 
 ### 4. Start PostgreSQL
 
-From the repo root (where `docker-compose.yml` lives):
+From the `backend/` directory (where `docker-compose.yml` lives):
 
 \`\`\`bash
 docker compose up -d
@@ -97,15 +97,15 @@ uvicorn app.main:app --reload --port 8000
 
 ## Project structure
 
-\`\`\`
+```
 backend/
 ├── app/
 │   ├── main.py          # FastAPI entrypoint
 │   ├── config.py        # settings loaded from .env
 │   ├── db.py            # SQLAlchemy engine/session setup
 │   ├── models/          # SQLAlchemy models (customers, orders, tickets, etc.)
-│   ├── graph/           # LangGraph agent nodes (added in later steps)
-│   └── routes/          # API route modules
+│   ├── graph/           # LangGraph agent nodes (empty — added in later steps)
+│   └── routes/          # API route modules (empty — added in later steps)
 ├── alembic/              # DB migrations
 ├── seed/
 │   ├── generate_data.py       # fake customers/orders
@@ -113,8 +113,10 @@ backend/
 │   └── kb_articles/           # policy docs used by the Research Agent
 ├── requirements.txt
 ├── .env.example
+├── alembic.ini
+├── docker-compose.yml
 └── README.md
-\`\`\`
+```
 
 ## Status
 
@@ -123,7 +125,7 @@ backend/
 - [x] Database models + Alembic migrations
 - [x] Seed data (customers, orders, KB articles)
 - [x] Knowledge base embeddings (pgvector + Ollama)
-- [ ] MCP server (tools for agents)
-- [ ] LangGraph agent chain (triage → research → resolution → QA)
+- [ ] MCP server (tools for agents) — directory created, no tools implemented yet
+- [ ] LangGraph agent chain (triage → research → resolution → QA) — directory created, no nodes implemented yet
 - [ ] Human-in-the-loop approval flow
 - [ ] Dashboard
