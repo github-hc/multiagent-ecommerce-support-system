@@ -104,6 +104,7 @@ class HumanApproval(Base):
     approved_by: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+from pgvector.sqlalchemy import Vector
 
 class KBDoc(Base):
     __tablename__ = "kb_docs"
@@ -112,5 +113,5 @@ class KBDoc(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String, nullable=True)
+    embedding: Mapped[Optional[list[float]]] = mapped_column(Vector(768), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    # embedding column added separately in Step 5c (needs pgvector type)
