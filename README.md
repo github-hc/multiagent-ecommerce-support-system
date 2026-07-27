@@ -107,7 +107,37 @@ This project is currently in the **Halfway Stage (Step 3 completed)**.
 
 ## Getting Started
 
-Refer to individual README guides for detailed installation and deployment commands:
+You can run the entire stack (Database, Backend API, and MCP Server) together in a single command using Docker Compose, or run components individually for development.
+
+### Method 1: Running with Docker Compose (Recommended)
+
+1. Ensure **Ollama** is running locally on your host machine with the required models:
+   ```bash
+   ollama pull llama3.1:8b
+   ollama pull nomic-embed-text
+   ```
+
+2. Spin up the entire stack from the root directory:
+   ```bash
+   docker compose up --build
+   ```
+   *This automatically builds the backend and MCP server containers, launches a PostgreSQL container with `pgvector`, executes database migrations (`alembic upgrade head`), and exposes the services:*
+   - **Backend API**: `http://localhost:8000`
+   - **MCP Server (SSE)**: `http://localhost:8001`
+
+3. Seed the database (runs on host machine; requires backend virtual environment dependencies installed):
+   ```bash
+   cd backend
+   source venv/bin/activate
+   python -m seed.generate_data
+   python -m seed.generate_embeddings
+   ```
+
+---
+
+### Method 2: Manual Local Setup (Individual Components)
+
+If you are modifying code and want hot-reloading for local development, refer to individual README guides:
 
 1. Setup the Database and REST API: **[Backend README](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/backend/README.md)**
 2. Setup and run the MCP tools layer: **[MCP Server README](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/mcp_server/README.md)**
