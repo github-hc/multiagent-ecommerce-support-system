@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import datetime
 
 from app.db import get_db
-from app.models.models import Customer, Order, Ticket, AgentTrace, KBDoc
+from app.models.models import Customer, Order, Ticket, AgentTrace, KBDoc, Refund, HumanApproval
 from pydantic import BaseModel
 from app.logger import logger
 import ollama
@@ -211,4 +211,46 @@ async def search_kb(query: str, limit: int = 3, db: AsyncSession = Depends(get_d
         ]
     except Exception as e:
         logger.error(f"Error searching knowledge base: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RefundCreate(BaseModel):
+    order_id: str
+    ticket_id: str
+    amount: float
+    reason: Optional[str] = None
+
+
+@router.post("/refunds")
+async def create_refund(payload: RefundCreate, db: AsyncSession = Depends(get_db)):
+    logger.info(f"Creating refund request for order_id: {payload.order_id} | ticket_id: {payload.ticket_id} | amount: {payload.amount}")
+    try:
+        refund = Refund(
+            order_id=payload.order_id,
+            ticket_id=payload.ticket_id,
+            amount=payload.amount,
+            reason=payload.reason,
+            status="pending_approval",
+        )
+        db.add(refund)
+        await db.flush()
+        
+        approval = HumanApproval(
+            ticket_id=payload.ticket_id,
+            action_type="refund",
+            action_ref_id=refund.id,
+            status="pending",
+            requested_by_agent="resolution_agent",
+        )
+        db.add(approval)
+        await db.commit()
+        
+        logger.info(f"Successfully created refund ID {refund.id} and approval request ID {approval.id}")
+        return {
+            "status": "success",
+            "refund_id": str(refund.id),
+            "approval_id": str(approval.id),
+        }
+    except Exception as e:
+        logger.error(f"Error creating refund request: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

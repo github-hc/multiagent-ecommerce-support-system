@@ -5,7 +5,7 @@ from app.config import settings
 from app.graph.graph import compiled_graph
 import app.logger
 
-logger = logging.getLogger("triage-agent")
+logger = logging.getLogger("test-runner")
 
 SAMPLE_TICKET = {
     "channel": "email",

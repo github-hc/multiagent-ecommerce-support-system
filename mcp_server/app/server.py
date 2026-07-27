@@ -153,6 +153,29 @@ async def create_trace(
         raise e
 
 
+@mcp.tool()
+async def create_refund_request(order_id: str, ticket_id: str, amount: float, reason: str = None) -> dict:
+    """Create a pending refund request for an order linked to a support ticket."""
+    logger.info(f"[Tool] create_refund_request invoked | order_id: {order_id} | ticket_id: {ticket_id} | amount: {amount}")
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                f"{settings.backend_base_url}/internal/refunds",
+                json={
+                    "order_id": order_id,
+                    "ticket_id": ticket_id,
+                    "amount": amount,
+                    "reason": reason,
+                }
+            )
+            resp.raise_for_status()
+            logger.info(f"[Tool] create_refund_request | Refund request successfully registered for order_id: {order_id}")
+            return resp.json()
+    except Exception as e:
+        logger.error(f"[Tool] create_refund_request | Error: {e}", exc_info=True)
+        raise e
+
+
 # ----------------- FastAPI Web Server Wrapper -----------------
 
 mcp_app = mcp.http_app()
@@ -168,6 +191,7 @@ tool_map = {
     "search_knowledge_base": search_knowledge_base,
     "classify_ticket": classify_ticket,
     "create_trace": create_trace,
+    "create_refund_request": create_refund_request,
 }
 
 

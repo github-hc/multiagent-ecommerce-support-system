@@ -15,6 +15,7 @@ class TicketState(TypedDict):
     # filled in by later agents (Step 11+)
     kb_results: list
     draft_response: Optional[str]
+    qa_feedback: Optional[str]
     qa_approved: bool
     iteration_count: int
     requires_human_approval: bool

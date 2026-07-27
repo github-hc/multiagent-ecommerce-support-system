@@ -4,7 +4,7 @@ from app.graph.state import TicketState
 from app.mcp_client import call_tool
 import app.logger
 
-logger = logging.getLogger("triage-agent")
+logger = logging.getLogger("research-agent")
 
 
 async def research_node(state: TicketState) -> TicketState:
