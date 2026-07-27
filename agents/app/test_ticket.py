@@ -1,7 +1,11 @@
 import asyncio
 import httpx
+import logging
 from app.config import settings
 from app.graph.graph import compiled_graph
+import app.logger
+
+logger = logging.getLogger("triage-agent")
 
 SAMPLE_TICKET = {
     "channel": "email",
@@ -38,13 +42,13 @@ async def get_ticket(ticket_id: str) -> dict:
 
 
 async def main():
-    print("Fetching a sample customer...")
+    logger.info("Fetching a sample customer...")
     customer_id = await get_sample_customer_id()
-    print(f"Using customer_id: {customer_id}")
+    logger.info(f"Using customer_id: {customer_id}")
 
-    print("Creating a test ticket...")
+    logger.info("Creating a test ticket...")
     ticket_id = await create_ticket(customer_id)
-    print(f"Created ticket_id: {ticket_id}")
+    logger.info(f"Created ticket_id: {ticket_id}")
 
     ticket = await get_ticket(ticket_id)
 
@@ -63,10 +67,10 @@ async def main():
         "requires_human_approval": False,
     }
 
-    print("Running the graph...")
+    logger.info("Running the graph...")
     result = await compiled_graph.ainvoke(initial_state)
-    print("\nFinal state:")
-    print(result)
+    logger.info("Final state:")
+    logger.info(result)
 
 
 if __name__ == "__main__":

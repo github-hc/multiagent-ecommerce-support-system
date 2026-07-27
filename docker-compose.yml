@@ -65,6 +65,7 @@ services:
     container_name: support_promtail
     volumes:
       - shared_logs:/var/log/app
+      - ./agents/logs:/var/log/agents:ro
       - ./promtail-config.yaml:/etc/promtail/config.yml
     command: -config.file=/etc/promtail/config.yml
     depends_on:

@@ -1,9 +1,12 @@
 import json
 import ollama
 import httpx
+import logging
 from app.config import settings
 from app.graph.state import TicketState
-from app.logger import logger
+import app.logger
+
+logger = logging.getLogger("triage-agent")
 
 TRIAGE_PROMPT = """You are a support ticket triage agent for an e-commerce company.
 Read the ticket and classify it. Respond with ONLY a JSON object, no other text.

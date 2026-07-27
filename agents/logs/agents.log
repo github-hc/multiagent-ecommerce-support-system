@@ -93,3 +93,28 @@ httpx.ReadTimeout
 2026-07-27 15:54:51,605 [INFO] agents: [Triage Node] Logging execution trace to backend...
 2026-07-27 15:54:51,649 [INFO] httpx: HTTP Request: POST http://localhost:8000/internal/traces "HTTP/1.1 200 OK"
 2026-07-27 15:54:51,650 [INFO] agents: [Triage Node] Execution trace logging successful.
+2026-07-27 18:00:58,161 [INFO] agents: Agent workflow logging initialized. Output file: logs/agents.log
+2026-07-27 18:00:58,164 [INFO] triage-agent: Fetching a sample customer...
+2026-07-27 18:00:58,306 [INFO] httpx: HTTP Request: GET http://localhost:8000/internal/customers?limit=1 "HTTP/1.1 200 OK"
+2026-07-27 18:00:58,307 [INFO] triage-agent: Using customer_id: 063d7cc8-e449-4c4b-9ff4-d68a526e2cae
+2026-07-27 18:00:58,307 [INFO] triage-agent: Creating a test ticket...
+2026-07-27 18:00:58,332 [INFO] httpx: HTTP Request: POST http://localhost:8000/internal/tickets "HTTP/1.1 200 OK"
+2026-07-27 18:00:58,332 [INFO] triage-agent: Created ticket_id: 5d717b15-9638-46f7-b40e-fef9a3e259b7
+2026-07-27 18:00:58,345 [INFO] httpx: HTTP Request: GET http://localhost:8000/internal/tickets/5d717b15-9638-46f7-b40e-fef9a3e259b7 "HTTP/1.1 200 OK"
+2026-07-27 18:00:58,345 [INFO] triage-agent: Running the graph...
+2026-07-27 18:00:58,348 [INFO] triage-agent: [Triage Node] Processing ticket_id: 5d717b15-9638-46f7-b40e-fef9a3e259b7
+2026-07-27 18:00:58,348 [INFO] triage-agent: [Triage Node] Invoking local Ollama model: llama3.1:8b
+2026-07-27 18:05:54,896 [INFO] httpx: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-07-27 18:05:55,196 [INFO] triage-agent: [Triage Node] Raw LLM Response: {
+  "category": "refund",
+  "priority": "medium"
+}
+2026-07-27 18:05:55,339 [INFO] triage-agent: [Triage Node] Parsed classification | category: refund | priority: medium
+2026-07-27 18:05:55,339 [INFO] triage-agent: [Triage Node] Patching classification to backend...
+2026-07-27 18:06:03,094 [INFO] httpx: HTTP Request: PATCH http://localhost:8000/internal/tickets/5d717b15-9638-46f7-b40e-fef9a3e259b7/classification "HTTP/1.1 200 OK"
+2026-07-27 18:06:03,216 [INFO] triage-agent: [Triage Node] Patch classification successful.
+2026-07-27 18:06:03,216 [INFO] triage-agent: [Triage Node] Logging execution trace to backend...
+2026-07-27 18:06:03,766 [INFO] httpx: HTTP Request: POST http://localhost:8000/internal/traces "HTTP/1.1 200 OK"
+2026-07-27 18:06:03,767 [INFO] triage-agent: [Triage Node] Execution trace logging successful.
+2026-07-27 18:06:03,997 [INFO] triage-agent: Final state:
+2026-07-27 18:06:03,998 [INFO] triage-agent: {'ticket_id': '5d717b15-9638-46f7-b40e-fef9a3e259b7', 'customer_id': '063d7cc8-e449-4c4b-9ff4-d68a526e2cae', 'order_id': None, 'subject': 'Refund for damaged item', 'body': "The headphones I received were cracked. I'd like a refund please.", 'category': 'refund', 'priority': 'medium', 'kb_results': [], 'draft_response': None, 'qa_approved': False, 'iteration_count': 0, 'requires_human_approval': False}

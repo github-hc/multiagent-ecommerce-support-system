@@ -9,10 +9,18 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: ecommerce-support
+  - job_name: app-container-logs
     static_configs:
       - targets:
           - localhost
         labels:
           job: support-logs
           __path__: /var/log/app/*.log
+
+  - job_name: agent-host-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: support-logs
+          __path__: /var/log/agents/*.log
