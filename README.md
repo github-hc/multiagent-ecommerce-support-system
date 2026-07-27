@@ -47,8 +47,8 @@ graph TD
         Refund[Request Refund]
     end
     
-    Research & Resolution -->|Query / Action| MCP Server
-    MCP Server -->|HTTP Internal API| API
+    Research & Resolution -->|Query / Action| MCPServer
+    MCPServer -->|HTTP Internal API| API
     
     %% Dashboard
     subgraph StreamlitDashboard ["Streamlit Dashboard"]
@@ -57,8 +57,8 @@ graph TD
         Queue[Approval Queue]
     end
     
-    Streamlit Dashboard -->|Query Traces & Approvals| API
-    Streamlit Dashboard -->|POST Approve / Reject| API
+    StreamlitDashboard -->|Query Traces & Approvals| API
+    StreamlitDashboard -->|POST Approve / Reject| API
     API -.->|Interrupt State Checkpoints| DB
 ```
 
