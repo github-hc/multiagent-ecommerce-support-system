@@ -30,12 +30,13 @@ services:
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - OLLAMA_HOST=http://host.docker.internal:11434
       - ENV=development
+    volumes:
+      - shared_logs:/app/logs
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
-    # Run database migrations first, then start the FastAPI application
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   mcp_server:
@@ -47,8 +48,38 @@ services:
       - "8001:8001"
     environment:
       - BACKEND_BASE_URL=http://backend:8000
+    volumes:
+      - shared_logs:/app/logs
     depends_on:
       - backend
 
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: support_loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: support_promtail
+    volumes:
+      - shared_logs:/var/log/app
+      - ./promtail-config.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: support_grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning/datasources/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
+    depends_on:
+      - loki
+
 volumes:
   postgres_data:
+  shared_logs:

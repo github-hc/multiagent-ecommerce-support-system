@@ -142,3 +142,25 @@ If you are modifying code and want hot-reloading for local development, refer to
 1. Setup the Database and REST API: **[Backend README](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/backend/README.md)**
 2. Setup and run the MCP tools layer: **[MCP Server README](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/mcp_server/README.md)**
 3. Setup and run the LangGraph workspace: **[Agents README](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/README.md)**
+
+---
+
+## Observability & Logging Dashboard
+
+We run a containerized observability stack consisting of **Grafana Loki** (log aggregator), **Promtail** (log shipper), and **Grafana** (dashboard UI) alongside the application containers.
+
+To view the logs from all major execution steps:
+
+1. Open **Grafana** in your browser: **[http://localhost:3000](http://localhost:3000)**
+2. Log in using default credentials:
+   - **Username**: `admin`
+   - **Password**: `admin`
+   - *If prompted to change your password on first login, click the "Skip" button.*
+3. Navigate to the **Explore** page by clicking the compass icon in the left-hand sidebar (or go directly to **[http://localhost:3000/explore](http://localhost:3000/explore)**).
+4. Ensure **Loki** is selected in the data source dropdown at the top-left.
+5. In the query text box (Code tab) or label browser, query the logs using:
+   ```text
+   {job="support-logs"}
+   ```
+6. Set the **Time Range Picker** (clock icon in the top-right, next to the run button) to **Last 1 hour** or **Last 3 hours** to make sure it includes the time you executed the ticket tests.
+7. Click the blue **Run query** button in the top-right to display the logs.

@@ -1,0 +1,95 @@
+2026-07-27 15:39:24,313 [INFO] agents: Agent workflow logging initialized. Output file: logs/agents.log
+2026-07-27 15:39:24,463 [INFO] httpx: HTTP Request: GET http://localhost:8000/internal/customers?limit=1 "HTTP/1.1 200 OK"
+2026-07-27 15:39:24,487 [INFO] httpx: HTTP Request: POST http://localhost:8000/internal/tickets "HTTP/1.1 200 OK"
+2026-07-27 15:39:24,499 [INFO] httpx: HTTP Request: GET http://localhost:8000/internal/tickets/938f3568-fd64-49f7-ad83-a620c0489fde "HTTP/1.1 200 OK"
+2026-07-27 15:39:24,502 [INFO] agents: [Triage Node] Processing ticket_id: 938f3568-fd64-49f7-ad83-a620c0489fde
+2026-07-27 15:39:24,502 [INFO] agents: [Triage Node] Invoking local Ollama model: llama3.1:8b
+2026-07-27 15:43:57,242 [INFO] httpx: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-07-27 15:43:57,797 [INFO] agents: [Triage Node] Raw LLM Response: {
+  "category": "refund",
+  "priority": "medium"
+}
+2026-07-27 15:43:57,811 [INFO] agents: [Triage Node] Parsed classification | category: refund | priority: medium
+2026-07-27 15:43:57,811 [INFO] agents: [Triage Node] Patching classification to backend...
+2026-07-27 15:44:04,648 [ERROR] agents: [Triage Node] Error communicating with backend: 
+Traceback (most recent call last):
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpcore/_async/connection.py", line 103, in handle_async_request
+    return await self._connection.handle_async_request(request)
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpcore/_async/http11.py", line 136, in handle_async_request
+    raise exc
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpcore/_async/http11.py", line 106, in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpcore/_async/http11.py", line 177, in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpcore/_async/http11.py", line 217, in _receive_event
+    data = await self._network_stream.read(
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpcore/_backends/anyio.py", line 37, in read
+    return b""
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/contextlib.py", line 135, in __exit__
+    self.gen.throw(type, value, traceback)
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/app/graph/nodes/triage.py", line 55, in triage_node
+    patch_resp = await client.patch(
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_client.py", line 1933, in patch
+    return await self.request(
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/contextlib.py", line 135, in __exit__
+    self.gen.throw(type, value, traceback)
+  File "/Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/venv/lib/python3.9/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout
+2026-07-27 15:48:41,056 [INFO] agents: Agent workflow logging initialized. Output file: logs/agents.log
+2026-07-27 15:48:41,317 [INFO] httpx: HTTP Request: GET http://localhost:8000/internal/customers?limit=1 "HTTP/1.1 200 OK"
+2026-07-27 15:48:41,352 [INFO] httpx: HTTP Request: POST http://localhost:8000/internal/tickets "HTTP/1.1 200 OK"
+2026-07-27 15:48:41,375 [INFO] httpx: HTTP Request: GET http://localhost:8000/internal/tickets/0b19689e-6e77-428f-b1ed-3e5ea827dff4 "HTTP/1.1 200 OK"
+2026-07-27 15:48:41,379 [INFO] agents: [Triage Node] Processing ticket_id: 0b19689e-6e77-428f-b1ed-3e5ea827dff4
+2026-07-27 15:48:41,379 [INFO] agents: [Triage Node] Invoking local Ollama model: llama3.1:8b
+2026-07-27 15:49:18,645 [INFO] httpx: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-07-27 15:49:18,770 [INFO] agents: [Triage Node] Raw LLM Response: {"category": "refund", "priority": "medium"}
+2026-07-27 15:49:18,771 [INFO] agents: [Triage Node] Parsed classification | category: refund | priority: medium
+2026-07-27 15:49:18,771 [INFO] agents: [Triage Node] Patching classification to backend...
+2026-07-27 15:49:21,796 [INFO] httpx: HTTP Request: PATCH http://localhost:8000/internal/tickets/0b19689e-6e77-428f-b1ed-3e5ea827dff4/classification "HTTP/1.1 200 OK"
+2026-07-27 15:49:21,810 [INFO] agents: [Triage Node] Patch classification successful.
+2026-07-27 15:49:21,810 [INFO] agents: [Triage Node] Logging execution trace to backend...
+2026-07-27 15:49:22,205 [INFO] httpx: HTTP Request: POST http://localhost:8000/internal/traces "HTTP/1.1 200 OK"
+2026-07-27 15:49:22,206 [INFO] agents: [Triage Node] Execution trace logging successful.
+2026-07-27 15:54:08,954 [INFO] agents: Agent workflow logging initialized. Output file: logs/agents.log
+2026-07-27 15:54:09,566 [INFO] httpx: HTTP Request: GET http://localhost:8000/internal/customers?limit=1 "HTTP/1.1 200 OK"
+2026-07-27 15:54:09,657 [INFO] httpx: HTTP Request: POST http://localhost:8000/internal/tickets "HTTP/1.1 200 OK"
+2026-07-27 15:54:09,679 [INFO] httpx: HTTP Request: GET http://localhost:8000/internal/tickets/415b20b8-7267-4f02-9735-6c6ac378cdd8 "HTTP/1.1 200 OK"
+2026-07-27 15:54:09,682 [INFO] agents: [Triage Node] Processing ticket_id: 415b20b8-7267-4f02-9735-6c6ac378cdd8
+2026-07-27 15:54:09,682 [INFO] agents: [Triage Node] Invoking local Ollama model: llama3.1:8b
+2026-07-27 15:54:49,744 [INFO] httpx: HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+2026-07-27 15:54:49,815 [INFO] agents: [Triage Node] Raw LLM Response: {"category": "refund", "priority": "medium"}
+2026-07-27 15:54:49,815 [INFO] agents: [Triage Node] Parsed classification | category: refund | priority: medium
+2026-07-27 15:54:49,816 [INFO] agents: [Triage Node] Patching classification to backend...
+2026-07-27 15:54:51,603 [INFO] httpx: HTTP Request: PATCH http://localhost:8000/internal/tickets/415b20b8-7267-4f02-9735-6c6ac378cdd8/classification "HTTP/1.1 200 OK"
+2026-07-27 15:54:51,605 [INFO] agents: [Triage Node] Patch classification successful.
+2026-07-27 15:54:51,605 [INFO] agents: [Triage Node] Logging execution trace to backend...
+2026-07-27 15:54:51,649 [INFO] httpx: HTTP Request: POST http://localhost:8000/internal/traces "HTTP/1.1 200 OK"
+2026-07-27 15:54:51,650 [INFO] agents: [Triage Node] Execution trace logging successful.
