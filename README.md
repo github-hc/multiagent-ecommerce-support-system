@@ -4,17 +4,33 @@ Welcome to the **AI Ops Command Center**, a customer support ticket processing s
 
 ---
 
-## The Workflow in a Nutshell
+## How It Works
 
-When a customer support ticket is received:
-1. **Triage Agent** classifies the ticket by category and priority.
-2. **Research Agent** calls MCP tools to collect customer facts, order history, and policy search hits.
-3. **Resolution Agent** drafts a tailored resolution or requests a refund if eligible.
-4. **QA Agent** reviews the draft, either approving it or routing it back for revision (escalating to humans after 2 attempts).
-5. **Human-in-the-Loop Interruption** pauses execution for operations requiring authorization (e.g. refunds), waiting on human approval before concluding.
-6. **Command Center Dashboard** visualizes the traces, tool calls, and approval queues live.
+Imagine a customer support team where instead of one person handling everything, you have a **relay team of specialized AI agents** passing a ticket along, step-by-step. Each agent is a specialist focused on doing one job perfectly:
 
----
+```mermaid
+graph LR
+    Triage["🔍 Triage Agent<br><i>(Classifies issue & urgency)</i>"] --> Research["🗄️ Research Agent<br><i>(Gathers context & policies)</i>"]
+    Research --> Resolution["✍️ Resolution Agent<br><i>(Drafts reply & requests refund)</i>"]
+```
+
+### Meet the AI Agents:
+
+1. 🔍 **The Triage Agent (The Gatekeeper)**
+   Looks at the incoming ticket, classifies it (e.g., as a refund request, bug report, or complaint), and determines how urgently it needs to be handled.
+   * **Under the hood**: It parses raw ticket text using a local LLM (`llama3.1:8b`), outputs a structured category and priority, and patches the database classification via the MCP server.
+
+2. 🗄️ **The Research Agent (The Fact-Finder)**
+   Searches the company's internal knowledge base for relevant policy articles (like returns or shipping FAQs), looks up the customer's profile, and fetches their purchase history.
+   * **Under the hood**: It generates text embeddings using `nomic-embed-text` and performs a pgvector similarity search on knowledge base documents, querying customer SQL records through MCP lookup tools.
+
+3. ✍️ **The Resolution Agent (The Writer)**
+   Takes the customer history and relevant policies gathered by the Research Agent to write a personalized, empathetic draft reply. If the policies show the request is eligible for a refund, it submits a request.
+   * **Under the hood**: Prompts the LLM with customer data and policy context to produce a JSON response. If eligible, it calls the `create_refund_request` MCP tool to queue a database refund.
+
+4. 🛡️ **Human-in-the-Loop Safeguard (The Manager)**
+   The AI is never allowed to issue refunds or send money on its own. If a refund is requested, the system pauses the workflow and alerts a human manager. The action is only completed after a human reviews and clicks "Approve".
+   * **Under the hood**: Uses LangGraph's state persistence (`interrupt` capability) to pause graph execution and save the state to PostgreSQL, exposing a REST API endpoint for human approval.
 
 ## System Architecture
 
@@ -73,35 +89,7 @@ The codebase is organized into isolated, decoupled components:
 - **[agents/](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/)**: LangGraph definition orchestrating agent node tasks (Triage, Research, Resolution, QA).
 - **dashboard/**: *(Planned - Step 6)* Streamlit user interface visualizing live ticket feeds and handling human-in-the-loop approvals.
 
----
 
-## Implementation Progress Checklist
-
-This project is currently in the **Halfway Stage (Step 3 completed)**.
-
-- [x] **Step 1: Set up the database**
-  - PostgreSQL schema containing `customers`, `orders`, `tickets`, `agent_traces`, `tool_calls`, `refunds`, and `kb_docs` tables.
-  - Alembic migration pipeline.
-  - Fake data generator (Faker) and Knowledge Base embedding loader (pgvector + Ollama).
-- [x] **Step 2: Build the MCP server (the "hands")**
-  - FastMCP framework setup.
-  - Database lookup tools for customer profiles, order details, and ticket histories.
-  - [ ] *Pending*: Knowledge Base semantic search and refund/update/escalate tools.
-- [x] **Step 3: Build one agent, end to end**
-  - LangGraph environment setup.
-  - Triage Agent node using local Ollama model (`llama3.1:8b`) to categorize and prioritize tickets.
-  - Automatic database classification patching and execution tracing to `agent_traces`.
-  - Verification script running a mock ticket end-to-end.
-- [ ] **Step 4: Add the rest of the agent chain**
-  - Integrate Research Agent, Resolution Agent, and QA Agent nodes.
-  - Enforce QA reject retry threshold (escalate to human after 2 tries).
-- [ ] **Step 5: Add the human approval step**
-  - Implement LangGraph interruption checkpoints.
-  - Expose API endpoints for human approval/rejection.
-- [ ] **Step 6: Build the dashboard**
-  - Streamlit application displaying live ticket feeds, detail traces, and approval controls.
-- [ ] **Step 7: Polish it for your portfolio**
-  - System performance and security adjustments.
 
 ---
 
