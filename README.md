@@ -26,21 +26,21 @@ graph TD
     API -->|Persist state| DB[(PostgreSQL + pgvector)]
     
     %% Agent Orchestrator
-    subgraph Agent Loop (LangGraph)
+    subgraph AgentLoop ["Agent Loop (LangGraph)"]
         State([TicketState]) --> Triage[Triage Agent]
         Triage --> Research[Research Agent]
         Research --> Resolution[Resolution Agent]
         Resolution --> QA{QA Agent}
         
         QA -- Approved --> EndState([Resolved State])
-        QA -- Rejected / Retry < 2 --> Resolution
-        QA -- Rejected / Retry >= 2 --> Escalate([Escalate to Human])
+        QA -->|"Rejected / Retry < 2"| Resolution
+        QA -->|"Rejected / Retry >= 2"| Escalate([Escalate to Human])
     end
     
     API -->|Invoke Graph| State
     
     %% MCP server
-    subgraph MCP Server (Tools)
+    subgraph MCPServer ["MCP Server (Tools)"]
         KB[Search Knowledge Base]
         Profile[Get Customer Profile]
         Orders[Get Order Details]
@@ -51,7 +51,7 @@ graph TD
     MCP Server -->|HTTP Internal API| API
     
     %% Dashboard
-    subgraph Streamlit Dashboard
+    subgraph StreamlitDashboard ["Streamlit Dashboard"]
         Feed[Ticket Feed]
         Detail[Live Traces & Tool Calls]
         Queue[Approval Queue]
