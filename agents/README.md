@@ -2,20 +2,19 @@
 
 This is the orchestration and reasoning layer of the Ecommerce Support System. It utilizes [LangGraph](https://github.com/langchain-ai/langgraph) to coordinate multiple specialized AI agents in a collaborative graph workflow. Each agent operates as a graph node, parsing inputs, executing tools, making decisions, and modifying the global ticket state.
 
-## Current Orchestration Architecture
+---
 
-Currently, the orchestration is in a **half-implemented state (Step 3)**:
-- **Completed**: Triage Agent node, graph compilation, and FastAPI trace/classification integration.
-- **Pending**: Research Agent, Resolution Agent, QA Agent, and Human-in-the-Loop approval interception.
+## Orchestration Architecture
+
+The agent graph links multiple nodes. Currently, **Triage** and **Research** nodes are fully wired:
 
 ```mermaid
 graph TD
     Start([New Ticket State]) --> Triage[Triage Agent Node]
-    Triage --> DB_Update[Patch Classification & Log Trace to DB]
-    DB_Update --> End([END])
+    Triage -->|Classify & Log Trace| Research[Research Agent Node]
+    Research -->|Search KB, Customer, Orders & Log Trace| End([END])
     
     %% Future Steps (4 & 5)
-    %% Triage --> Research[Research Agent]
     %% Research --> Resolution[Resolution Agent]
     %% Resolution --> QA{QA Agent}
     %% QA -- Approved --> End
@@ -38,7 +37,7 @@ The graph operations rely on a central state dictionary passed between nodes. De
 | `body` | `str` | The body text/message of the ticket |
 | `category` | `Optional[str]` | Classification category (billing, bug, refund, etc.) |
 | `priority` | `Optional[str]` | Priority/urgency level (low, medium, high, urgent) |
-| `kb_results` | `list` | Matching knowledge base search results (Step 4+) |
+| `kb_results` | `list` | Matching knowledge base search results (loaded by Research node) |
 | `draft_response` | `Optional[str]` | Draft answer compiled by Resolution Agent (Step 4+) |
 | `qa_approved` | `bool` | Evaluation flag set by QA Agent (Step 4+) |
 | `iteration_count` | `int` | Counter tracking loops between QA and Resolution nodes (Step 4+) |
@@ -48,22 +47,28 @@ The graph operations rely on a central state dictionary passed between nodes. De
 
 ## Agent Node Details
 
-### 1. Triage Agent (Active)
+### 1. Triage Agent Node
 - **File**: [triage.py](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/app/graph/nodes/triage.py)
 - **Role**: Reads the support ticket, determines the issue type, and labels its priority.
 - **Model**: Local Ollama execution (configured model e.g., `llama3.1:8b`).
 - **Allowed Categories**: `billing`, `bug`, `how_to`, `refund`, `complaint`, `other`
 - **Allowed Priorities**: `low`, `medium`, `high`, `urgent`
-- **Actions**:
+- **Actions (via MCP server)**:
   1. Prompts LLM to output a JSON object: `{"category": "...", "priority": "..."}`.
   2. Updates state with classification labels.
-  3. Sends `PATCH /internal/tickets/{ticket_id}/classification` to the backend.
-  4. Records a step trace by posting to `/internal/traces` in the backend.
+  3. Calls `classify_ticket` tool on MCP server.
+  4. Calls `create_trace` tool on MCP server to log a step 1 trace audit.
 
-### 2. Future Agents (Planned)
-- **Research Agent**: Query customer, order, and knowledge base details using MCP tools.
-- **Resolution Agent**: Synthesize data to draft customer replies; request refunds.
-- **QA Agent**: Audit replies for accuracy and compliance; route ticket back to Resolution or escalate if loops exceed 2 retries.
+### 2. Research Agent Node
+- **File**: [research.py](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/app/graph/nodes/research.py)
+- **Role**: Gathers customer and context details.
+- **Actions (via MCP server)**:
+  1. Queries customer metadata using `get_customer_profile` tool.
+  2. Queries order history using `get_customer_order_history` tool.
+  3. Queries past tickets using `get_past_tickets` tool.
+  4. Performs pgvector semantic similarity search on knowledge base docs using `search_knowledge_base` tool.
+  5. Queries specific order details (if linked) using `get_order_details` tool.
+  6. Calls `create_trace` tool to log a step 2 trace audit.
 
 ---
 
@@ -89,13 +94,14 @@ cp .env.example .env
 
 Variables configured in `.env`:
 - `BACKEND_BASE_URL`: API backend endpoint (default: `http://localhost:8000`).
+- `MCP_SERVER_URL`: HTTP Gateway endpoint for the MCP server (default: `http://localhost:8001`).
 - `OLLAMA_MODEL`: LLM run by local Ollama instance (default: `llama3.1:8b`).
 
 ### 3. Running & Testing
 
-Ensure that both the backend FastAPI service and the Ollama server are active before executing agent scripts.
+Ensure that the backend FastAPI service, the MCP server, and the Ollama server are all active before executing agent scripts.
 
-To run a test ticket through the triage node workflow:
+To run a test ticket through the triage and research node workflow:
 
 ```bash
 python -m app.test_ticket
@@ -105,10 +111,4 @@ This runs the script defined in [test_ticket.py](file:///Users/harshitchoudhary/
 1. Fetches a customer from the database.
 2. Creates a support ticket for them.
 3. Invokes the `compiled_graph` using the ticket's state.
-4. Outputs the final state after classification.
-
-To run the graph on a specific existing ticket ID:
-
-```bash
-python -m app.main <ticket_id>
-```
+4. Outputs the final state after Triage classification and Research tools have finished.

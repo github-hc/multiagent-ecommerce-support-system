@@ -47,7 +47,7 @@ graph TD
         Refund[Request Refund]
     end
     
-    Research & Resolution -->|Query / Action| MCPServer
+    AgentLoop -->|Call Tool (HTTP REST /call_tool)| MCPServer
     MCPServer -->|HTTP Internal API| API
     
     %% Dashboard

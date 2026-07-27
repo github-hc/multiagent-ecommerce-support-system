@@ -1,14 +1,10 @@
 # MCP Server — Ecommerce Support Tools
 
-This is the Model Context Protocol (MCP) server for the Ecommerce Support System. Built using Python's [FastMCP](https://github.com/jlowin/fastmcp) SDK, it exposes a secure set of actions (a "toolbox") that AI agents can use to fetch customers, orders, and ticket history from the backend. 
+This is the Model Context Protocol (MCP) server for the Ecommerce Support System. Built using Python's [FastMCP](https://github.com/jlowin/fastmcp) SDK, it exposes a secure set of actions (a "toolbox") that AI agents use to perform operations (read/write/search) via the backend.
 
-By separating database operations into an MCP server, the agents are decoupled from the physical database schema and interact solely with a restricted set of validated interfaces.
+By separating backend operations into an MCP server, the agents are decoupled from the physical database schema and interact solely with a restricted set of validated interfaces.
 
-## Current Implementation Status
-
-Currently, the MCP server is in a **partially completed state (Step 2)**:
-- **Completed**: Read-only profile and history lookup tools.
-- **Pending**: Knowledge base vector search, refund creation, ticket updates, and escalation tools.
+Additionally, this server runs a standard FastAPI wrapper providing a direct **HTTP REST Gateway** (`/call_tool`) to allow agent runtimes without the full MCP client SDK to easily invoke tools over HTTP.
 
 ---
 
@@ -16,7 +12,7 @@ Currently, the MCP server is in a **partially completed state (Step 2)**:
 
 The server exposes tools defined in [server.py](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/mcp_server/app/server.py):
 
-### 1. Active Tools (Lookup & Context)
+### 1. Context Lookup & Operations
 
 #### `get_customer_profile`
 - **Arguments**: `customer_id: str`
@@ -34,14 +30,19 @@ The server exposes tools defined in [server.py](file:///Users/harshitchoudhary/T
 - **Arguments**: `customer_id: str`
 - **Function**: Queries backend `GET /internal/customers/{customer_id}/tickets` and returns past support ticket logs.
 
----
+### 2. Decision Support & State Actions
 
-### 2. Planned Tools (For future steps)
+#### `search_knowledge_base`
+- **Arguments**: `query: str`, `top_k: int = 3`
+- **Function**: Queries backend `GET /internal/kb/search` to generate embeddings and run a pgvector similarity search on knowledge base docs.
 
-- **Search Knowledge Base**: Search articles in `kb_docs` using vector/semantic search.
-- **Request Refund**: Creates a pending refund in the database (never auto-approves; triggers human validation).
-- **Update Ticket Status**: Alters state of ticket in database.
-- **Escalate Ticket**: Routes ticket escalation to a human agent.
+#### `classify_ticket`
+- **Arguments**: `ticket_id: str`, `category: str`, `priority: str`
+- **Function**: Patches the ticket's category and priority to backend `PATCH /internal/tickets/{ticket_id}/classification`.
+
+#### `create_trace`
+- **Arguments**: `ticket_id: str`, `agent_name: str`, `step_number: int`, `input_state: dict`, `output_state: dict`, `reasoning_summary: str`
+- **Function**: Logs an agent execution step audit log to backend `POST /internal/traces`.
 
 ---
 
@@ -70,14 +71,45 @@ Configured variables:
 
 ### 3. Run the Server
 
-Start the server standalone (transports via standard input/output):
+#### Option A: Running as an HTTP / SSE Server (Recommended)
+This runs the FastAPI app exposing the custom REST endpoint `/call_tool` alongside the standard `/mcp/sse` MCP transport:
+
+```bash
+uvicorn app.server:app --host 0.0.0.0 --port 8001
+```
+
+#### Option B: Standalone stdio Runner
+Runs the server utilizing standard input/output transport:
 
 ```bash
 python -m app.server
 ```
 
-To test or inspect tools interactively, you can run the server via the MCP Inspector (if installed globally):
+---
 
-```bash
-npx @modelcontextprotocol/inspector python -m app.server
+## HTTP REST Gateway Usage
+
+To consume the tools via simple HTTP without the full MCP client stack, send a `POST` request to `http://localhost:8001/call_tool`:
+
+**Example Payload:**
+```json
+{
+  "name": "get_customer_profile",
+  "arguments": {
+    "customer_id": "063d7cc8-e449-4c4b-9ff4-d68a526e2cae"
+  }
+}
+```
+
+**Example Response:**
+```json
+{
+  "status": "success",
+  "result": {
+    "id": "063d7cc8-e449-4c4b-9ff4-d68a526e2cae",
+    "name": "Nicole Cox",
+    "email": "nicole.cox@example.com",
+    "tier": "gold"
+  }
+}
 ```

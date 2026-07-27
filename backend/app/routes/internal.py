@@ -5,9 +5,10 @@ from typing import Optional
 from datetime import datetime
 
 from app.db import get_db
-from app.models.models import Customer, Order, Ticket, AgentTrace
+from app.models.models import Customer, Order, Ticket, AgentTrace, KBDoc
 from pydantic import BaseModel
 from app.logger import logger
+import ollama
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
@@ -184,3 +185,30 @@ async def list_customers(limit: int = 5, db: AsyncSession = Depends(get_db)):
     customers = result.scalars().all()
     logger.info(f"Retrieved {len(customers)} customers (requested limit={limit})")
     return [{"id": str(c.id), "name": c.name, "email": c.email} for c in customers]
+
+
+@router.get("/kb/search")
+async def search_kb(query: str, limit: int = 3, db: AsyncSession = Depends(get_db)):
+    logger.info(f"KB Search query received: '{query}' | limit: {limit}")
+    try:
+        response = ollama.embeddings(model="nomic-embed-text", prompt=query)
+        embedding = response["embedding"]
+        result = await db.execute(
+            select(KBDoc)
+            .order_by(KBDoc.embedding.cosine_distance(embedding))
+            .limit(limit)
+        )
+        docs = result.scalars().all()
+        logger.info(f"KB Search returned {len(docs)} matching articles.")
+        return [
+            {
+                "id": str(doc.id),
+                "title": doc.title,
+                "content": doc.content,
+                "category": doc.category,
+            }
+            for doc in docs
+        ]
+    except Exception as e:
+        logger.error(f"Error searching knowledge base: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

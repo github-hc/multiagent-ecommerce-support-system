@@ -2,3 +2,5 @@ fastmcp
 httpx
 python-dotenv
 pydantic-settings
+fastapi
+uvicorn

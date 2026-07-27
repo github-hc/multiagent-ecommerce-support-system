@@ -12,5 +12,5 @@ COPY . .
 # Expose port for SSE transport
 EXPOSE 8001
 
-# Command to run FastMCP with SSE transport on host 0.0.0.0
-CMD ["fastmcp", "run", "app/server.py", "--transport", "sse", "--host", "0.0.0.0", "--port", "8001"]
+# Command to run standard FastAPI / ASGI app
+CMD ["uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8001"]

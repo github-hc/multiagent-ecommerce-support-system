@@ -1,9 +1,9 @@
 import json
 import ollama
-import httpx
 import logging
 from app.config import settings
 from app.graph.state import TicketState
+from app.mcp_client import call_tool
 import app.logger
 
 logger = logging.getLogger("triage-agent")
@@ -51,34 +51,29 @@ async def triage_node(state: TicketState) -> TicketState:
 
     new_state = {**state, "category": category, "priority": priority}
 
-    # Persist classification to backend
+    # Persist classification to backend via MCP
     try:
-        logger.info(f"[Triage Node] Patching classification to backend...")
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            patch_resp = await client.patch(
-                f"{settings.backend_base_url}/internal/tickets/{ticket_id}/classification",
-                json={"category": category, "priority": priority},
-            )
-            patch_resp.raise_for_status()
-            logger.info("[Triage Node] Patch classification successful.")
-            
-            logger.info(f"[Triage Node] Logging execution trace to backend...")
-            trace_resp = await client.post(
-                f"{settings.backend_base_url}/internal/traces",
-                json={
-                    "ticket_id": ticket_id,
-                    "agent_name": "triage_agent",
-                    "step_number": 1,
-                    "input_state": {"subject": state.get("subject"), "body": state["body"]},
-                    "output_state": {"category": category, "priority": priority},
-                    "reasoning_summary": f"Classified as {category}/{priority}",
-                },
-            )
-            trace_resp.raise_for_status()
-            logger.info("[Triage Node] Execution trace logging successful.")
+        logger.info(f"[Triage Node] Patching classification via MCP server...")
+        await call_tool(
+            "classify_ticket",
+            {"ticket_id": ticket_id, "category": category, "priority": priority}
+        )
+        logger.info("[Triage Node] Patch classification successful via MCP.")
+        
+        logger.info(f"[Triage Node] Logging execution trace via MCP server...")
+        await call_tool(
+            "create_trace",
+            {
+                "ticket_id": ticket_id,
+                "agent_name": "triage_agent",
+                "step_number": 1,
+                "input_state": {"subject": state.get("subject"), "body": state["body"]},
+                "output_state": {"category": category, "priority": priority},
+                "reasoning_summary": f"Classified as {category}/{priority}",
+            }
+        )
+        logger.info("[Triage Node] Execution trace logging successful via MCP.")
     except Exception as e:
-        logger.error(f"[Triage Node] Error communicating with backend: {e}", exc_info=True)
-        # Note: we do not raise to prevent crashing the agent run, or we can raise depending on requirements.
-        # Here we follow existing behavior.
+        logger.error(f"[Triage Node] Error communicating via MCP server: {e}", exc_info=True)
 
     return new_state
