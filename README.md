@@ -12,6 +12,7 @@ Imagine a customer support team where instead of one person handling everything,
 graph LR
     Triage["🔍 Triage Agent<br><i>(Classifies issue & urgency)</i>"] --> Research["🗄️ Research Agent<br><i>(Gathers context & policies)</i>"]
     Research --> Resolution["✍️ Resolution Agent<br><i>(Drafts reply & requests refund)</i>"]
+    Resolution --> QA["✅ QA Agent<br><i>(Reviews & audits reply)</i>"]
 ```
 
 ### Meet the AI Agents:
@@ -28,7 +29,11 @@ graph LR
    Takes the customer history and relevant policies gathered by the Research Agent to write a personalized, empathetic draft reply. If the policies show the request is eligible for a refund, it submits a request.
    * **Under the hood**: Prompts the LLM with customer data and policy context to produce a JSON response. If eligible, it calls the `create_refund_request` MCP tool to queue a database refund.
 
-4. 🛡️ **Human-in-the-Loop Safeguard (The Manager)**
+4. ✅ **The QA Agent (The Auditor)**
+   Reviews the draft reply to ensure it is polite, clear, does not contradict policies, and does not make unauthorized promises. If not approved, it sends it back to the Resolution Agent with feedback (escalating to humans after 2 attempts).
+   * **Under the hood**: Prompts the LLM with the ticket, context, and draft response, parses its JSON score, updates the iteration counters, and logs the review trace via the MCP server.
+
+5. 🛡️ **Human-in-the-Loop Safeguard (The Manager)**
    The AI is never allowed to issue refunds or send money on its own. If a refund is requested, the system pauses the workflow and alerts a human manager. The action is only completed after a human reviews and clicks "Approve".
    * **Under the hood**: Uses LangGraph's state persistence (`interrupt` capability) to pause graph execution and save the state to PostgreSQL, exposing a REST API endpoint for human approval.
 

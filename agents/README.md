@@ -12,14 +12,11 @@ The agent graph links multiple nodes. Currently, **Triage** and **Research** nod
 graph TD
     Start([New Ticket State]) --> Triage[Triage Agent Node]
     Triage -->|Classify & Log Trace| Research[Research Agent Node]
-    Research -->|Search KB, Customer, Orders & Log Trace| End([END])
+    Research -->|Search KB, Profile, Orders & Log Trace| Resolution[Resolution Agent Node]
+    Resolution -->|Draft Response & Log Trace| QA{QA Agent Node}
     
-    %% Future Steps (4 & 5)
-    %% Research --> Resolution[Resolution Agent]
-    %% Resolution --> QA{QA Agent}
-    %% QA -- Approved --> End
-    %% QA -- Rejected / Retry < 2 --> Resolution
-    %% QA -- Rejected / Retry >= 2 --> Escalate[Human Escalation]
+    QA -->|Approved / Iterations >= 2| End([END])
+    QA -->|Rejected / Iterations < 2| Resolution
 ```
 
 ---
@@ -69,6 +66,23 @@ The graph operations rely on a central state dictionary passed between nodes. De
   4. Performs pgvector semantic similarity search on knowledge base docs using `search_knowledge_base` tool.
   5. Queries specific order details (if linked) using `get_order_details` tool.
   6. Calls `create_trace` tool to log a step 2 trace audit.
+
+### 3. Resolution Agent Node
+- **File**: [resolution.py](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/app/graph/nodes/resolution.py)
+- **Role**: Synthesizes facts to draft customer replies and handles refund requests.
+- **Actions (via MCP server)**:
+  1. Drafts an empathetic response using customer context and knowledge articles.
+  2. If policies allow a refund, calls the `create_refund_request` tool to queue a refund request in PostgreSQL.
+  3. Calls `create_trace` tool to log a step 3 trace audit.
+
+### 4. QA Agent Node
+- **File**: [qa.py](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/app/graph/nodes/qa.py)
+- **Role**: Audits draft replies for compliance, clarity, tone, and policy alignment.
+- **Actions (via MCP server)**:
+  1. Reviews the drafted reply against original ticket and knowledge base context.
+  2. Decides to approve or reject the draft (providing feedback if rejected).
+  3. Updates iteration counts and routes the graph (resolves to Resolution for up to 2 retries, otherwise escalates).
+  4. Calls `create_trace` tool to log a step 4 trace audit.
 
 ---
 
