@@ -13,6 +13,9 @@ graph LR
     Triage["🔍 Triage Agent<br><i>(Classifies issue & urgency)</i>"] --> Research["🗄️ Research Agent<br><i>(Gathers context & policies)</i>"]
     Research --> Resolution["✍️ Resolution Agent<br><i>(Drafts reply & requests refund)</i>"]
     Resolution --> QA["✅ QA Agent<br><i>(Reviews & audits reply)</i>"]
+    QA -->|"Refund case"| Human["🧑‍💼 Human Approval<br><i>(Manager reviews & decides)</i>"]
+    Human --> Finalize["📬 Finalize Agent<br><i>(Saves reply & marks resolved)</i>"]
+    QA -->|"Non-refund / approved"| Finalize
 ```
 
 ### Meet the AI Agents:
@@ -30,12 +33,16 @@ graph LR
    * **Under the hood**: Prompts the LLM with customer data and policy context to produce a JSON response. If eligible, it calls the `create_refund_request` MCP tool to queue a database refund.
 
 4. ✅ **The QA Agent (The Auditor)**
-   Reviews the draft reply to ensure it is polite, clear, does not contradict policies, and does not make unauthorized promises. If not approved, it sends it back to the Resolution Agent with feedback (escalating to humans after 2 attempts).
+   Reviews the draft reply to ensure it is polite, clear, does not contradict policies, and does not make unauthorized promises. If not approved, it sends it back to the Resolution Agent with feedback (escalating after 2 attempts).
    * **Under the hood**: Prompts the LLM with the ticket, context, and draft response, parses its JSON score, updates the iteration counters, and logs the review trace via the MCP server.
 
-5. 🛡️ **Human-in-the-Loop Safeguard (The Manager)**
-   The AI is never allowed to issue refunds or send money on its own. If a refund is requested, the system pauses the workflow and alerts a human manager. The action is only completed after a human reviews and clicks "Approve".
-   * **Under the hood**: Uses LangGraph's state persistence (`interrupt` capability) to pause graph execution and save the state to PostgreSQL, exposing a REST API endpoint for human approval.
+5. 🧑‍💼 **The Human Approval Agent (The Manager)**
+   Acts as a mandatory checkpoint for any ticket that requires a refund. The AI never issues refunds autonomously — the graph pauses here and waits for a human manager to approve or reject the action before continuing.
+   * **Under the hood**: Uses LangGraph's `interrupt_before` mechanism to pause graph execution and persist state to PostgreSQL. A REST endpoint (`POST /tickets/{id}/resume`) accepts the human decision and resumes the graph. In MVP mode, approval is auto-simulated for faster local development.
+
+6. 📬 **The Finalize Agent (The Closer)**
+   Wraps up the ticket after all checks pass: saves the approved reply as a ticket message, marks the ticket status as `resolved`, and logs the final audit trace.
+   * **Under the hood**: Calls `create_ticket_message`, `update_ticket_status`, and `create_trace` MCP tools to commit the final state to the database.
 
 ## System Architecture
 
@@ -53,9 +60,13 @@ graph TD
         Research --> Resolution[Resolution Agent]
         Resolution --> QA{QA Agent}
         
-        QA -- Approved --> EndState([Resolved State])
+        QA -- "Approved + No Refund" --> Finalize[Finalize Agent]
         QA -->|"Rejected / Retry < 2"| Resolution
-        QA -->|"Rejected / Retry >= 2"| Escalate([Escalate to Human])
+        QA -->|"Rejected / Retry >= 2"| Finalize
+        QA -- "Approved + Refund" --> Human{Human Approval}
+        Human -- "Approved" --> Finalize
+        Human -- "Rejected" --> Resolution
+        Finalize --> End([END])
     end
     
     API -->|Invoke Graph| State
@@ -66,6 +77,9 @@ graph TD
         Profile[Get Customer Profile]
         Orders[Get Order Details]
         Refund[Request Refund]
+        Ticket[Update Ticket Status]
+        Msg[Create Ticket Message]
+        Trace[Create Trace]
     end
     
     AgentLoop -->|"Call Tool (HTTP REST /call_tool)"| MCPServer
@@ -91,10 +105,8 @@ The codebase is organized into isolated, decoupled components:
 
 - **[backend/](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/backend/)**: Core FastAPI web service and database schema definitions, including Alembic migrations and database seeding scripts.
 - **[mcp_server/](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/mcp_server/)**: A FastMCP server exposing database interactions as clean tools for the LLM agents.
-- **[agents/](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/)**: LangGraph definition orchestrating agent node tasks (Triage, Research, Resolution, QA).
-- **dashboard/**: *(Planned - Step 6)* Streamlit user interface visualizing live ticket feeds and handling human-in-the-loop approvals.
-
-
+- **[agents/](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/)**: LangGraph definition orchestrating the full agent pipeline — Triage → Research → Resolution → QA → Human Approval → Finalize.
+- **dashboard/**: *(Planned)* Streamlit user interface visualizing live ticket feeds and handling human-in-the-loop approvals.
 
 ---
 
@@ -116,7 +128,7 @@ You can run the entire stack (Database, Backend API, and MCP Server) together in
    ```
    *This automatically builds the backend and MCP server containers, launches a PostgreSQL container with `pgvector`, executes database migrations (`alembic upgrade head`), and exposes the services:*
    - **Backend API**: `http://localhost:8000`
-   - **MCP Server (SSE)**: `http://localhost:8001`
+   - **MCP Server**: `http://localhost:8001`
 
 3. Seed the database (runs on host machine; requires backend virtual environment dependencies installed):
    ```bash
@@ -125,6 +137,14 @@ You can run the entire stack (Database, Backend API, and MCP Server) together in
    python -m seed.generate_data
    python -m seed.generate_embeddings
    ```
+
+4. Start the Agents Service (runs on host machine; handles ticket graph execution):
+   ```bash
+   cd agents
+   source venv/bin/activate
+   uvicorn app.main:app --port 8002
+   ```
+   - **Agents Service**: `http://localhost:8002`
 
 ---
 
@@ -135,6 +155,36 @@ If you are modifying code and want hot-reloading for local development, refer to
 1. Setup the Database and REST API: **[Backend README](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/backend/README.md)**
 2. Setup and run the MCP tools layer: **[MCP Server README](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/mcp_server/README.md)**
 3. Setup and run the LangGraph workspace: **[Agents README](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/README.md)**
+
+---
+
+## Human-in-the-Loop Flow
+
+When a refund is approved by the QA Agent, the workflow pauses at the **Human Approval** node. Here is how the two modes work:
+
+### MVP Mode (default — fast local development)
+The `MVP_AUTO_APPROVE = True` flag in [`human_approval.py`](file:///Users/harshitchoudhary/Tech2go/Agentic/multi-agent-ecommerce-support/multiagent-ecommerce-support-system/agents/app/graph/nodes/human_approval.py) causes the node to auto-approve and the graph runs to `END` in a single `ainvoke()` call. No pause, no resume API call needed.
+
+### Production Mode (real human-in-the-loop)
+To enable real human approval:
+1. Set `MVP_AUTO_APPROVE = False` in `human_approval.py`
+2. Uncomment `interrupt_before=["human_approval"]` in `graph.py`
+
+The graph will then **pause** after QA approval and return `{"status": "paused"}` from the `/run` endpoint. A human manager reviews and submits a decision:
+
+```bash
+# Approve the refund
+curl -X POST http://localhost:8002/tickets/{ticket_id}/resume \
+  -H "Content-Type: application/json" \
+  -d '{"approved": true}'
+
+# Reject the refund with a reason
+curl -X POST http://localhost:8002/tickets/{ticket_id}/resume \
+  -H "Content-Type: application/json" \
+  -d '{"approved": false, "note": "Order is outside return window"}'
+```
+
+The graph then resumes from the `human_approval` node and continues to `finalize`.
 
 ---
 
