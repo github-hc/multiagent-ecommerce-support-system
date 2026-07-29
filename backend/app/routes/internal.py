@@ -3,9 +3,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from datetime import datetime
+import asyncio
 
 from app.db import get_db
-from app.models.models import Customer, Order, Ticket, AgentTrace, KBDoc, Refund, HumanApproval
+from app.models.models import Customer, Order, Ticket, AgentTrace, KBDoc, Refund, HumanApproval, TicketMessage
 from pydantic import BaseModel
 from app.logger import logger
 import ollama
@@ -190,28 +191,46 @@ async def list_customers(limit: int = 5, db: AsyncSession = Depends(get_db)):
 @router.get("/kb/search")
 async def search_kb(query: str, limit: int = 3, db: AsyncSession = Depends(get_db)):
     logger.info(f"KB Search query received: '{query}' | limit: {limit}")
-    try:
-        response = ollama.embeddings(model="nomic-embed-text", prompt=query)
-        embedding = response["embedding"]
-        result = await db.execute(
-            select(KBDoc)
-            .order_by(KBDoc.embedding.cosine_distance(embedding))
-            .limit(limit)
-        )
-        docs = result.scalars().all()
-        logger.info(f"KB Search returned {len(docs)} matching articles.")
-        return [
-            {
-                "id": str(doc.id),
-                "title": doc.title,
-                "content": doc.content,
-                "category": doc.category,
-            }
-            for doc in docs
-        ]
-    except Exception as e:
-        logger.error(f"Error searching knowledge base: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = ollama.embeddings(model="nomic-embed-text", prompt=query)
+            embedding = response["embedding"]
+            result = await db.execute(
+                select(KBDoc)
+                .order_by(KBDoc.embedding.cosine_distance(embedding))
+                .limit(limit)
+            )
+            docs = result.scalars().all()
+            logger.info(f"KB Search returned {len(docs)} matching articles.")
+            return [
+                {
+                    "id": str(doc.id),
+                    "title": doc.title,
+                    "content": doc.content,
+                    "category": doc.category,
+                }
+                for doc in docs
+            ]
+        except Exception as e:
+            err_str = str(e)
+            # Retry on transient DB startup/recovery errors
+            is_transient = any(msg in err_str for msg in [
+                "CannotConnectNowError",
+                "recovery mode",
+                "connection refused",
+                "could not connect",
+            ])
+            if is_transient and attempt < max_retries:
+                wait = attempt * 2  # 2s, 4s
+                logger.warning(
+                    f"KB Search: transient DB error on attempt {attempt}/{max_retries}, "
+                    f"retrying in {wait}s... Error: {e}"
+                )
+                await asyncio.sleep(wait)
+                continue
+            logger.error(f"Error searching knowledge base: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))
 
 
 class RefundCreate(BaseModel):
@@ -253,4 +272,55 @@ async def create_refund(payload: RefundCreate, db: AsyncSession = Depends(get_db
         }
     except Exception as e:
         logger.error(f"Error creating refund request: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class MessageCreate(BaseModel):
+    sender_type: str
+    content: str
+
+
+@router.post("/tickets/{ticket_id}/messages")
+async def add_ticket_message(ticket_id: str, payload: MessageCreate, db: AsyncSession = Depends(get_db)):
+    logger.info(f"Adding ticket message for ticket_id: {ticket_id} | sender: {payload.sender_type}")
+    try:
+        message = TicketMessage(
+            ticket_id=ticket_id,
+            sender_type=payload.sender_type,
+            content=payload.content
+        )
+        db.add(message)
+        await db.commit()
+        logger.info(f"Successfully added message ID {message.id} to ticket_id: {ticket_id}")
+        return {"message_id": str(message.id)}
+    except Exception as e:
+        logger.error(f"Error adding message to ticket_id {ticket_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class StatusUpdate(BaseModel):
+    status: str
+
+
+@router.patch("/tickets/{ticket_id}/status")
+async def update_ticket_status(ticket_id: str, payload: StatusUpdate, db: AsyncSession = Depends(get_db)):
+    logger.info(f"Updating status for ticket_id: {ticket_id} to '{payload.status}'")
+    try:
+        result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+        ticket = result.scalar_one_or_none()
+        if not ticket:
+            logger.warning(f"Ticket not found for status update: {ticket_id}")
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        
+        ticket.status = payload.status
+        if payload.status == "resolved":
+            ticket.resolved_at = datetime.utcnow()
+        
+        await db.commit()
+        logger.info(f"Successfully updated status for ticket_id: {ticket_id} to '{payload.status}'")
+        return {"status": "success", "ticket_id": ticket_id, "new_status": payload.status}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error updating status for ticket_id {ticket_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

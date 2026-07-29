@@ -5,6 +5,7 @@ from app.config import settings
 from app.graph.state import TicketState
 from app.mcp_client import call_tool
 import app.logger
+from app.utils import clean_and_parse_json
 
 logger = logging.getLogger("triage-agent")
 
@@ -41,11 +42,11 @@ async def triage_node(state: TicketState) -> TicketState:
         raise e
 
     try:
-        parsed = json.loads(raw)
+        parsed = clean_and_parse_json(raw)
         category = parsed.get("category", "other")
         priority = parsed.get("priority", "medium")
         logger.info(f"[Triage Node] Parsed classification | category: {category} | priority: {priority}")
-    except json.JSONDecodeError:
+    except Exception:
         logger.error("[Triage Node] JSON decode error parsing LLM response. Falling back to other/medium.", exc_info=True)
         category, priority = "other", "medium"
 

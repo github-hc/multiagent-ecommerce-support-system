@@ -176,6 +176,42 @@ async def create_refund_request(order_id: str, ticket_id: str, amount: float, re
         raise e
 
 
+@mcp.tool()
+async def create_ticket_message(ticket_id: str, sender_type: str, content: str) -> dict:
+    """Save a customer support agent message reply linked to a ticket."""
+    logger.info(f"[Tool] create_ticket_message invoked | ticket_id: {ticket_id} | sender: {sender_type}")
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                f"{settings.backend_base_url}/internal/tickets/{ticket_id}/messages",
+                json={"sender_type": sender_type, "content": content}
+            )
+            resp.raise_for_status()
+            logger.info(f"[Tool] create_ticket_message | Message successfully added for ticket_id: {ticket_id}")
+            return resp.json()
+    except Exception as e:
+        logger.error(f"[Tool] create_ticket_message | Error: {e}", exc_info=True)
+        raise e
+
+
+@mcp.tool()
+async def update_ticket_status(ticket_id: str, status: str) -> dict:
+    """Update a ticket's operational status (e.g. resolve it)."""
+    logger.info(f"[Tool] update_ticket_status invoked | ticket_id: {ticket_id} | status: {status}")
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.patch(
+                f"{settings.backend_base_url}/internal/tickets/{ticket_id}/status",
+                json={"status": status}
+            )
+            resp.raise_for_status()
+            logger.info(f"[Tool] update_ticket_status | Status successfully updated to '{status}' for ticket_id: {ticket_id}")
+            return resp.json()
+    except Exception as e:
+        logger.error(f"[Tool] update_ticket_status | Error: {e}", exc_info=True)
+        raise e
+
+
 # ----------------- FastAPI Web Server Wrapper -----------------
 
 mcp_app = mcp.http_app()
@@ -192,6 +228,8 @@ tool_map = {
     "classify_ticket": classify_ticket,
     "create_trace": create_trace,
     "create_refund_request": create_refund_request,
+    "create_ticket_message": create_ticket_message,
+    "update_ticket_status": update_ticket_status,
 }
 
 

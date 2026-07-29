@@ -3,3 +3,8 @@ ollama
 httpx
 python-dotenv
 pydantic-settings
+langgraph-checkpoint-postgres
+psycopg[binary]
+psycopg-pool
+fastapi
+uvicorn

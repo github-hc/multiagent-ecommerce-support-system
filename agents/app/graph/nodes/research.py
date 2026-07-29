@@ -20,12 +20,18 @@ async def research_node(state: TicketState) -> TicketState:
         {"query": state["body"], "top_k": 3},
     )
 
+    order_id = state.get("order_id")
+    if not order_id and order_history:
+        order_id = order_history[0]["id"]
+        logger.info(f"[Research Node] Associated ticket with customer's most recent order: {order_id}")
+
     order_details = None
-    if state.get("order_id"):
-        order_details = await call_tool("get_order_details", {"order_id": state["order_id"]})
+    if order_id:
+        order_details = await call_tool("get_order_details", {"order_id": order_id})
 
     new_state = {
         **state,
+        "order_id": order_id,
         "kb_results": kb_results,
     }
 

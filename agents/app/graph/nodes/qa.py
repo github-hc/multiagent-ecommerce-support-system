@@ -5,6 +5,7 @@ from app.config import settings
 from app.graph.state import TicketState
 from app.mcp_client import call_tool
 import app.logger
+from app.utils import clean_and_parse_json
 
 logger = logging.getLogger("qa-agent")
 
@@ -61,11 +62,11 @@ async def qa_node(state: TicketState) -> TicketState:
         raise e
 
     try:
-        parsed = json.loads(raw)
+        parsed = clean_and_parse_json(raw)
         approved = parsed.get("approved", False)
         feedback = parsed.get("feedback", "")
         logger.info(f"[QA Node] Parsed review | approved: {approved} | feedback: {feedback}")
-    except json.JSONDecodeError:
+    except Exception:
         logger.error("[QA Node] JSON decode error parsing LLM response. Falling back to rejection.", exc_info=True)
         # if QA itself fails to respond cleanly, don't auto-approve - treat as rejected
         approved = False

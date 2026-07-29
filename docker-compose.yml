@@ -13,10 +13,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d support_db"]
+      # Use a real SQL query — pg_isready passes even during WAL recovery
+      test: ["CMD-SHELL", "psql -U postgres -d support_db -c 'SELECT 1' > /dev/null 2>&1"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   backend:
     build:
@@ -52,6 +54,7 @@ services:
       - shared_logs:/app/logs
     depends_on:
       - backend
+    restart: on-failure
 
   loki:
     image: grafana/loki:2.9.2

@@ -14,8 +14,8 @@ async def call_tool(name: str, arguments: dict = None) -> any:
     logger.info(f"[MCP Client] Sending POST to {url} | calling tool: {name} with arguments: {arguments}")
 
     try:
-        # 120s timeout to support high system load / slow DB operations under local LLM execution
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        # 300s timeout to support high system load / slow DB operations under local LLM execution
+        async with httpx.AsyncClient(timeout=300.0) as client:
             resp = await client.post(url, json={"name": name, "arguments": arguments})
             resp.raise_for_status()
             data = resp.json()
